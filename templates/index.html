@@ -9,38 +9,37 @@
 </head>
 <body>
     <div class="container">
-        <h1>Stock Analysis App</h1>
+        <h1>Stock Analysis Dashboard</h1>
 
-        <!-- Dropdown for Issuer Codes -->
-        <label for="issuerDropdown">Select Issuer Code:</label>
-        <select id="issuerDropdown">
-            <option value="">Select Issuer</option>
-        </select>
+        <div class="controls">
+            <div class="control-group">
+                <label for="issuerDropdown">Issuer Code</label>
+                <select id="issuerDropdown">
+                    <option value="">Select Issuer</option>
+                </select>
+            </div>
 
-        <!-- Dropdown for Time Period (Daily, Weekly, Monthly) -->
-        <label for="timePeriodDropdown">Select Time Period:</label>
-        <select id="timePeriodDropdown">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-        </select>
+            <div class="control-group">
+                <label for="timePeriodDropdown">Time Period</label>
+                <select id="timePeriodDropdown">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
 
-        <!-- Button for Scraping Data -->
-        <button id="scrapeDataButton">Scrape Data</button>
+            <div class="button-group">
+                <button id="scrapeDataButton">Scrape Data</button>
+                <button id="runAnalysisButton">Run Analysis</button>
+                <button id="fetchDataButton">Fetch Data</button>
+            </div>
+        </div>
 
-        <!-- Button for Running Technical Analysis -->
-        <button id="runAnalysisButton">Run Analysis</button>
+        <h2>Latest Analysis</h2>
+        <div id="todaysAnalysisContainer" class="table-container"></div>
 
-        <!-- Button for Fetching Latest Data -->
-        <button id="fetchDataButton">Fetch Data</button>
-
-        <!-- Today's Analysis Table -->
-        <h2>Today's Analysis</h2>
-        <div id="todaysAnalysisContainer"></div>
-
-        <!-- Historical Analysis Table -->
         <h2>Historical Analysis</h2>
-        <div id="historicalAnalysisContainer"></div>
+        <div id="historicalAnalysisContainer" class="table-container"></div>
     </div>
 
     <script>
@@ -52,7 +51,35 @@
                 });
             });
 
-            // Fetch data when clicking the Fetch Data button
+            function formatDate(dateString) {
+                return dateString.split(' ')[0];
+            }
+
+            function createTable(data) {
+                let output = "<table><thead><tr>";
+                const headers = Object.keys(data[0]);
+                headers.forEach(key => {
+                    output += `<th>${key}</th>`;
+                });
+                output += "</tr></thead><tbody>";
+
+                data.forEach(row => {
+                    output += "<tr>";
+                    headers.forEach(key => {
+                        let value = row[key];
+                        // Format date if the column is 'Date'
+                        if (key === 'Date' && value !== "No Data") {
+                            value = formatDate(value);
+                        }
+                        value = value === null ? "No Data" : value;
+                        output += `<td>${value}</td>`;
+                    });
+                    output += "</tr>";
+                });
+                output += "</tbody></table>";
+                return output;
+            }
+
             $('#fetchDataButton').click(function() {
                 const issuerCode = $('#issuerDropdown').val();
                 const timePeriod = $('#timePeriodDropdown').val();
@@ -62,78 +89,48 @@
                     return;
                 }
 
-                // Fetch latest analysis for the selected issuer and time period
+                // Fetch latest analysis
                 $.get(`/fetch_latest_analysis?issuer_code=${issuerCode}&time_period=${timePeriod}`, function(data) {
-                    let output = "<table><thead><tr>";
-                    Object.keys(data[0]).forEach(key => {
-                        output += `<th>${key}</th>`;
-                    });
-                    output += "</tr></thead><tbody>";
-                    data.forEach(row => {
-                        output += "<tr>";
-                        Object.keys(row).forEach(key => {
-                            let value = row[key] === null ? "No Data" : row[key];
-                            output += `<td>${value}</td>`;
-                        });
-                        output += "</tr>";
-                    });
-                    output += "</tbody></table>";
-                    $('#todaysAnalysisContainer').html(output);
+                    $('#todaysAnalysisContainer').html(createTable(data));
 
-                    // Add the signal button
-                    // Add the signal button
+                    // Add signal indicator with container
                     const signal = data[0].Signal;
-                    let signalClass = "";
-                    if (signal === "Buy") {
-                        signalClass = "buy";
-                    } else if (signal === "Sell") {
-                        signalClass = "sell";
-                    } else if (signal === "Hold") {  // Add condition for "Hold"
-                        signalClass = "hold";
+                    if (signal && signal !== "No Data") {
+                        $('#todaysAnalysisContainer').append(
+                            `<div class="signal-container"><div class="signal ${signal.toLowerCase()}">${signal}</div></div>`
+                        );
                     }
-                    $('#todaysAnalysisContainer').append(`<div class="signal ${signalClass}">${signal}</div>`);
-
                 }).fail((xhr) => {
                     alert(`Error: ${xhr.responseJSON?.message || "Failed to fetch latest analysis."}`);
                 });
 
-                // Fetch historical analysis data
+                // Fetch historical analysis
                 $.get(`/fetch_historical_analysis?issuer_code=${issuerCode}&time_period=${timePeriod}`, function(data) {
-                    let output = "<table><thead><tr>";
-                    Object.keys(data[0]).forEach(key => {
-                        output += `<th>${key}</th>`;
-                    });
-                    output += "</tr></thead><tbody>";
-                    data.forEach(row => {
-                        output += "<tr>";
-                        Object.keys(row).forEach(key => {
-                            let value = row[key] === null ? "No Data" : row[key];
-                            output += `<td>${value}</td>`;
-                        });
-                        output += "</tr>";
-                    });
-                    output += "</tbody></table>";
-                    $('#historicalAnalysisContainer').html(output);
+                    $('#historicalAnalysisContainer').html(createTable(data));
                 }).fail((xhr) => {
                     alert(`Error: ${xhr.responseJSON?.message || "Failed to fetch historical analysis."}`);
                 });
             });
 
-            // Scrape Data button to run main.py
             $('#scrapeDataButton').click(function() {
+                $(this).prop('disabled', true).text('Scraping...');
                 $.post('/scrape_data', function(response) {
                     alert(response.message);
                 }).fail(function() {
                     alert("Error running scrape data script.");
+                }).always(function() {
+                    $('#scrapeDataButton').prop('disabled', false).text('Scrape Data');
                 });
             });
 
-            // Run Analysis button to run TechnicalAnalysis.py
             $('#runAnalysisButton').click(function() {
+                $(this).prop('disabled', true).text('Analyzing...');
                 $.post('/run_analysis', function(response) {
                     alert(response.message);
                 }).fail(function() {
                     alert("Error running technical analysis script.");
+                }).always(function() {
+                    $('#runAnalysisButton').prop('disabled', false).text('Run Analysis');
                 });
             });
         });
