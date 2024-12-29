@@ -8,74 +8,135 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Stock Analysis App</h1>
+    <div class="container">
+        <h1>Stock Analysis App</h1>
 
-    <button id="runMain" aria-label="Run Main Script">Run Main Script</button>
-    <button id="runAnalysis" aria-label="Run Technical Analysis">Run Technical Analysis</button>
-    <button id="fetchData" aria-label="Fetch Analysis Data">Fetch Analysis Data</button>
-    <div id="dataContainer"></div>
+        <!-- Dropdown for Issuer Codes -->
+        <label for="issuerDropdown">Select Issuer Code:</label>
+        <select id="issuerDropdown">
+            <option value="">Select Issuer</option>
+        </select>
+
+        <!-- Dropdown for Time Period (Daily, Weekly, Monthly) -->
+        <label for="timePeriodDropdown">Select Time Period:</label>
+        <select id="timePeriodDropdown">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+        </select>
+
+        <!-- Button for Scraping Data -->
+        <button id="scrapeDataButton">Scrape Data</button>
+
+        <!-- Button for Running Technical Analysis -->
+        <button id="runAnalysisButton">Run Analysis</button>
+
+        <!-- Button for Fetching Latest Data -->
+        <button id="fetchDataButton">Fetch Data</button>
+
+        <!-- Today's Analysis Table -->
+        <h2>Today's Analysis</h2>
+        <div id="todaysAnalysisContainer"></div>
+
+        <!-- Historical Analysis Table -->
+        <h2>Historical Analysis</h2>
+        <div id="historicalAnalysisContainer"></div>
+    </div>
 
     <script>
-        // Run main script
-        $('#runMain').click(() => {
-            $.post('/run_main', (response) => {
-                alert(response.message);
-            }).fail((xhr) => {
-                alert(`Error: ${xhr.responseJSON?.message || "An error occurred while running the main script."}`);
+        $(document).ready(function() {
+            // Fetch issuer codes on page load
+            $.get('/get_issuer_codes', function(issuerCodes) {
+                issuerCodes.forEach(function(code) {
+                    $('#issuerDropdown').append(new Option(code, code));
+                });
             });
-        });
 
-        // Run technical analysis
-        $('#runAnalysis').click(() => {
-            $.post('/run_analysis', (response) => {
-                alert(response.message);
-            }).fail((xhr) => {
-                alert(`Error: ${xhr.responseJSON?.message || "An error occurred while running the analysis."}`);
-            });
-        });
+            // Fetch data when clicking the Fetch Data button
+            $('#fetchDataButton').click(function() {
+                const issuerCode = $('#issuerDropdown').val();
+                const timePeriod = $('#timePeriodDropdown').val();
 
-        // Fetch analysis data
-        $('#fetchData').click(() => {
-            $.get('/fetch_analysis_data', (data) => {
-                if (Array.isArray(data)) {
-                    let output = "<table border='1'><tr>";
+                if (!issuerCode || !timePeriod) {
+                    alert("Please select an issuer code and time period.");
+                    return;
+                }
 
-                    // Add headers dynamically from the first row
-                    for (let key in data[0]) {
+                // Fetch latest analysis for the selected issuer and time period
+                $.get(`/fetch_latest_analysis?issuer_code=${issuerCode}&time_period=${timePeriod}`, function(data) {
+                    let output = "<table><thead><tr>";
+                    Object.keys(data[0]).forEach(key => {
                         output += `<th>${key}</th>`;
-                    }
-                    output += "</tr>";
-
-                    // Loop through each row and check for null values
+                    });
+                    output += "</tr></thead><tbody>";
                     data.forEach(row => {
                         output += "<tr>";
-                        for (let key in row) {
-                            let value = row[key];
-
-                            // Replace null with a placeholder
-                            if (value === null) {
-                                value = "N/A";
-                            }
-
+                        Object.keys(row).forEach(key => {
+                            let value = row[key] === null ? "No Data" : row[key];
                             output += `<td>${value}</td>`;
-                        }
+                        });
                         output += "</tr>";
                     });
+                    output += "</tbody></table>";
+                    $('#todaysAnalysisContainer').html(output);
 
-                    output += "</table>";
-                    $('#dataContainer').html(output);
-                } else {
-                    alert(data.message);
-                }
-            }).fail((xhr) => {
-                alert(`Error: ${xhr.responseJSON.message}`);
+                    // Add the signal button
+                    // Add the signal button
+                    const signal = data[0].Signal;
+                    let signalClass = "";
+                    if (signal === "Buy") {
+                        signalClass = "buy";
+                    } else if (signal === "Sell") {
+                        signalClass = "sell";
+                    } else if (signal === "Hold") {  // Add condition for "Hold"
+                        signalClass = "hold";
+                    }
+                    $('#todaysAnalysisContainer').append(`<div class="signal ${signalClass}">${signal}</div>`);
+
+                }).fail((xhr) => {
+                    alert(`Error: ${xhr.responseJSON?.message || "Failed to fetch latest analysis."}`);
+                });
+
+                // Fetch historical analysis data
+                $.get(`/fetch_historical_analysis?issuer_code=${issuerCode}&time_period=${timePeriod}`, function(data) {
+                    let output = "<table><thead><tr>";
+                    Object.keys(data[0]).forEach(key => {
+                        output += `<th>${key}</th>`;
+                    });
+                    output += "</tr></thead><tbody>";
+                    data.forEach(row => {
+                        output += "<tr>";
+                        Object.keys(row).forEach(key => {
+                            let value = row[key] === null ? "No Data" : row[key];
+                            output += `<td>${value}</td>`;
+                        });
+                        output += "</tr>";
+                    });
+                    output += "</tbody></table>";
+                    $('#historicalAnalysisContainer').html(output);
+                }).fail((xhr) => {
+                    alert(`Error: ${xhr.responseJSON?.message || "Failed to fetch historical analysis."}`);
+                });
+            });
+
+            // Scrape Data button to run main.py
+            $('#scrapeDataButton').click(function() {
+                $.post('/scrape_data', function(response) {
+                    alert(response.message);
+                }).fail(function() {
+                    alert("Error running scrape data script.");
+                });
+            });
+
+            // Run Analysis button to run TechnicalAnalysis.py
+            $('#runAnalysisButton').click(function() {
+                $.post('/run_analysis', function(response) {
+                    alert(response.message);
+                }).fail(function() {
+                    alert("Error running technical analysis script.");
+                });
             });
         });
-
-
-
-
-
     </script>
 </body>
 </html>

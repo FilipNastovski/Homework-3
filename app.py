@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, jsonify
-import subprocess
+from flask import Flask, render_template, jsonify, request
 import sqlite3
+import subprocess
 import pandas as pd
 
 app = Flask(__name__)
@@ -15,11 +15,11 @@ def home():
 
 
 # Route to run main.py (filling issuer_codes table)
-@app.route('/run_main', methods=['POST'])
-def run_main():
+@app.route('/scrape_data', methods=['POST'])
+def scrape_data():
     try:
         subprocess.run(["python", "main.py"], check=True)
-        return jsonify({"message": "Main script executed successfully."}), 200
+        return jsonify({"message": "Data scraped successfully."}), 200
     except subprocess.CalledProcessError as e:
         return jsonify({"message": f"Error running main script: {str(e)}"}), 500
 
@@ -34,71 +34,83 @@ def run_analysis():
         return jsonify({"message": f"Error running technical analysis script: {str(e)}"}), 500
 
 
-# Route to fetch data from the database
-@app.route('/get_data', methods=['GET'])
-def get_data():
-    try:
-        conn = sqlite3.connect(DATABASE_PATH)
-        query = "SELECT * FROM technical_indicators"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        data = df.to_dict(orient='records')
-        return jsonify(data), 200
-    except Exception as e:
-        return jsonify({"message": f"Error fetching data: {str(e)}"}), 500
-
-
-# Route to fetch analysis data from the 'technical_indicators' table
+# Route to fetch issuer codes (for dropdown)
 @app.route('/get_issuer_codes', methods=['GET'])
 def get_issuer_codes():
     try:
-        print("Fetching issuer codes from the stock_data table...")  # Log message to confirm the route is being hit
-
-        # Connect to SQLite and fetch distinct issuer codes from 'stock_data' table
         conn = sqlite3.connect(DATABASE_PATH)
         query = "SELECT DISTINCT issuer_code FROM stock_data"
-        df = pd.read_sql_query(query, conn)
+        issuer_codes = pd.read_sql_query(query, conn)['issuer_code'].tolist()
         conn.close()
-
-        print("Issuer codes fetched successfully.")  # Log success message
-
-        # Convert DataFrame to list of issuer codes
-        issuer_codes = df['issuer_code'].tolist()
-
-        # Return the issuer codes as JSON
         return jsonify(issuer_codes), 200
     except Exception as e:
-        print(f"Error occurred: {str(e)}")  # Log the error
         return jsonify({"message": f"Error fetching issuer codes: {str(e)}"}), 500
 
 
-@app.route('/fetch_filtered_analysis_data', methods=['GET'])
-def fetch_filtered_analysis_data():
+@app.route('/fetch_latest_analysis', methods=['GET'])
+def fetch_latest_analysis():
     try:
         issuer_code = request.args.get('issuer_code')
         time_period = request.args.get('time_period')
 
-        print(f"Fetching data for issuer: {issuer_code} and time period: {time_period}...")
+        # Determine the appropriate SQL query based on the time period
+        if time_period == "daily":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'daily' ORDER BY Date DESC LIMIT 1"
+        elif time_period == "weekly":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'weekly' ORDER BY Date DESC LIMIT 1"
+        elif time_period == "monthly":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'monthly' ORDER BY Date DESC LIMIT 1"
+        else:
+            return jsonify({"message": "Invalid time period selected."}), 400
 
-        # Connect to SQLite and fetch filtered data based on issuer_code and time_period
         conn = sqlite3.connect(DATABASE_PATH)
-        query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = ?"
-        df = pd.read_sql_query(query, conn, params=(issuer_code, time_period))
+        df = pd.read_sql_query(query, conn, params=(issuer_code,))
         conn.close()
 
-        print("Filtered data fetched successfully.")
+        if df.empty:
+            return jsonify({"message": "No data available for the selected issuer and time period."}), 404
 
-        # Replace NaN or NULL values with a placeholder (e.g., "N/A")
-        df = df.fillna("N/A")
+        # Replace NaN/NULL with "No Data"
+        df = df.fillna("No Data")
 
-        # Convert DataFrame to dictionary for JSON response
-        data = df.to_dict(orient='records')
-
-        # Return the data as JSON
-        return jsonify(data), 200
+        # Return the latest analysis data
+        return jsonify(df.to_dict(orient='records')), 200
     except Exception as e:
-        print(f"Error occurred: {str(e)}")  # Log the error
-        return jsonify({"message": f"Error fetching filtered data: {str(e)}"}), 500
+        return jsonify({"message": f"Error fetching latest analysis data: {str(e)}"}), 500
+
+
+@app.route('/fetch_historical_analysis', methods=['GET'])
+def fetch_historical_analysis():
+    try:
+        issuer_code = request.args.get('issuer_code')
+        time_period = request.args.get('time_period')
+
+        # Build the query based on time period (Daily, Weekly, Monthly)
+        if time_period == "daily":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'daily'"
+        elif time_period == "weekly":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'weekly'"
+        elif time_period == "monthly":
+            query = f"SELECT * FROM technical_indicators WHERE issuer_code = ? AND time_period = 'monthly'"
+        else:
+            return jsonify({"message": "Invalid time period selected."}), 400
+
+        query += " ORDER BY Date DESC LIMIT 100"
+
+        conn = sqlite3.connect(DATABASE_PATH)
+        df = pd.read_sql_query(query, conn, params=(issuer_code,))
+        conn.close()
+
+        if df.empty:
+            return jsonify({"message": "No data available for the selected time period."}), 404
+
+        # Replace NaN/NULL with "No Data"
+        df = df.fillna("No Data")
+
+        # Return the historical data
+        return jsonify(df.to_dict(orient='records')), 200
+    except Exception as e:
+        return jsonify({"message": f"Error fetching historical analysis data: {str(e)}"}), 500
 
 
 

@@ -1,88 +1,88 @@
-/* General Styles */
+/* Dark theme CSS */
 body {
     font-family: Arial, sans-serif;
+    background-color: #2c2c2c;
+    color: #e0e0e0;
     margin: 0;
-    padding: 0;
-    background-color: #f4f4f9;
-    color: #333;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1, h2 {
     text-align: center;
 }
 
-h1 {
-    margin-top: 20px;
-    font-size: 2.5em;
-    color: #2c3e50;
-}
-
-/* Button Styles */
-button {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 10px 20px;
+select, button {
+    background-color: #333;
+    color: #e0e0e0;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #444;
     font-size: 16px;
-    cursor: pointer;
     border-radius: 5px;
-    margin: 10px;
-    transition: background-color 0.3s ease;
+    width: 200px;
 }
 
-button:hover {
-    background-color: #2980b9;
-}
-
-button:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-}
-
-/* Data Container Styles */
-#dataContainer {
-    margin: 20px auto;
-    max-width: 90%;
-    overflow-x: auto;
+button:hover, select:hover {
+    background-color: #444;
+    cursor: pointer;
 }
 
 table {
-    border-collapse: collapse;
     width: 100%;
-    margin: 20px 0;
-}
-
-table, th, td {
-    border: 1px solid #ddd;
+    border-collapse: collapse;
+    margin-top: 20px;
+    color: #e0e0e0;
 }
 
 th, td {
-    padding: 12px;
+    padding: 12px 20px;
+    border: 1px solid #444;
     text-align: center;
 }
 
 th {
-    background-color: #2c3e50;
+    background-color: #333;
+}
+
+td {
+    background-color: #222;
+}
+
+table tr:nth-child(even) {
+    background-color: #333;
+}
+
+.signal {
+    text-align: center;
+    margin-top: 20px;
+    padding: 10px;
+    width: 100px;
+    margin: 10px auto;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.buy {
+    background-color: green;
     color: white;
 }
 
-tr:nth-child(even) {
-    background-color: #f9f9f9;
+.sell {
+    background-color: red;
+    color: white;
 }
 
-tr:hover {
-    background-color: #f1f1f1;
+.hold {
+    background-color: orange;
+    color: white;
 }
 
-/* Responsive Design */
-@media (max-width: 600px) {
-    h1 {
-        font-size: 2em;
-    }
-
-    button {
-        font-size: 14px;
-        padding: 8px 16px;
-    }
-
-    table {
-        font-size: 12px;
-    }
+.no-data {
+    background-color: gray;
+    color: white;
 }
