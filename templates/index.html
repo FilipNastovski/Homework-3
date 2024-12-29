@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Stock Analysis App</h1>
+
+    <button id="runMain" aria-label="Run Main Script">Run Main Script</button>
+    <button id="runAnalysis" aria-label="Run Technical Analysis">Run Technical Analysis</button>
+    <button id="fetchData" aria-label="Fetch Analysis Data">Fetch Analysis Data</button>
+    <div id="dataContainer"></div>
+
+    <script>
+        // Run main script
+        $('#runMain').click(() => {
+            $.post('/run_main', (response) => {
+                alert(response.message);
+            }).fail((xhr) => {
+                alert(`Error: ${xhr.responseJSON?.message || "An error occurred while running the main script."}`);
+            });
+        });
+
+        // Run technical analysis
+        $('#runAnalysis').click(() => {
+            $.post('/run_analysis', (response) => {
+                alert(response.message);
+            }).fail((xhr) => {
+                alert(`Error: ${xhr.responseJSON?.message || "An error occurred while running the analysis."}`);
+            });
+        });
+
+        // Fetch analysis data
+        $('#fetchData').click(() => {
+            $.get('/fetch_analysis_data', (data) => {
+                if (Array.isArray(data)) {
+                    let output = "<table border='1'><tr>";
+
+                    // Add headers dynamically from the first row
+                    for (let key in data[0]) {
+                        output += `<th>${key}</th>`;
+                    }
+                    output += "</tr>";
+
+                    // Loop through each row and check for null values
+                    data.forEach(row => {
+                        output += "<tr>";
+                        for (let key in row) {
+                            let value = row[key];
+
+                            // Replace null with a placeholder
+                            if (value === null) {
+                                value = "N/A";
+                            }
+
+                            output += `<td>${value}</td>`;
+                        }
+                        output += "</tr>";
+                    });
+
+                    output += "</table>";
+                    $('#dataContainer').html(output);
+                } else {
+                    alert(data.message);
+                }
+            }).fail((xhr) => {
+                alert(`Error: ${xhr.responseJSON.message}`);
+            });
+        });
+
+
+
+
+
+    </script>
+</body>
+</html>
