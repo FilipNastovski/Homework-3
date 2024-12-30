@@ -23,8 +23,8 @@ class DataScraper:
             today = datetime.now().date()
 
             # If no start_date was specified, default to fetching 10 years of data
-            if not start_date:
-                start_date = today - pd.Timedelta(days=365 * 10)
+            #if not start_date:
+            start_date = today - pd.Timedelta(days=365 * 1)
 
             # Fetch data from the specified start_date to today
             data = await scraper.scrape_historical_data(start_date, today)
